@@ -5,17 +5,19 @@ from rest_framework.response import Response
 
 # Create your views here.
 
-class UserRegistration(generics.GenericAPIView):
+class UserRegistration(generics.CreateAPIView):
 
     serializer_class = RegisterSerializer
 
-    def post(self, request):
-        user = request.data
-        serilaizer = RegisterSerializer(data=user)
+    def create(self, request):
+        serilaizer = RegisterSerializer(data=request.data)
 
         #is_valid calls the seriallizer's validate method
-        if serilaizer.is_valid():
-            serilaizer.save() #'save' calls the serializer's create method
-            return Response(serilaizer.data, status=status.HTTP_201_CREATED)
+        serilaizer.is_valid(raise_exception=True)
+        serilaizer.save()
+        return Response(serilaizer.data, status=status.HTTP_201_CREATED)
 
-        return Response(serilaizer._errors, status=status.HTTP_400_BAD_REQUEST)
+class UserLogin(generics.GenericAPIView):
+
+    def post(self, request):
+        user = request.data
