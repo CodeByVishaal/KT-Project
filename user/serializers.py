@@ -66,3 +66,48 @@ class LoginSerializer(serializers.Serializer):
 
         else:
             raise serializers.ValidationError({'AuthorizationError':'Invalid User'})
+
+class UpdateUserSerializer(serializers.ModelSerializer):
+    first_name = serializers.CharField(required=False)
+    last_name = serializers.CharField(required=False)
+    email = serializers.EmailField(required=False)
+    username = serializers.CharField(required=False, min_length=4)
+    current_password = serializers.CharField(required=True, min_length=5, write_only=True)
+    new_password = serializers.CharField(required=False, min_length=5, write_only=True)
+    confirm_password = serializers.CharField(required=False, min_length=5, write_only=True)
+
+    class Meta:
+        model = User
+        fields = ['username', 'email', 'first_name', 'last_name', 'current_password', 'new_password', 'confirm_password']
+
+    def validate(self, data):
+        current_password = data.get('current_password')
+        new_password = data.get('new_password')
+        confirm_password = data.get('confirm_password')
+        user = self.context['request'].user
+
+        if not user.check_password(current_password):
+            raise serializers.ValidationError({'current_password':"Incorrect Password"})
+
+        if new_password or confirm_password:
+            if new_password != confirm_password:
+                raise serializers.ValidationError({'password': "Passwords do not match"})
+
+        return data
+
+
+    def update(self, instance, validated_data):
+        validated_data.pop('current_password', None)
+        validated_data.pop('confirm_password', None)
+        new_password = validated_data.pop('new_password', None)
+
+        for attr, data in validated_data.items():
+            setattr(instance, attr, data)
+
+        if new_password:
+            instance.set_password(new_password)
+
+        instance.save()
+        print(instance)
+
+        return instance

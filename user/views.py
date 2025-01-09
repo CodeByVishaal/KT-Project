@@ -1,8 +1,9 @@
 from django.shortcuts import render
 from rest_framework import generics, status
-from .serializers import RegisterSerializer, LoginSerializer
+from .serializers import RegisterSerializer, LoginSerializer, UpdateUserSerializer
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
+from .models import User
 
 
 # Create your views here.
@@ -27,11 +28,7 @@ class UserLogin(generics.GenericAPIView):
 
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        access_token = serializer.validated_data.get('access_token')
-        response =  Response(serializer.data, status=status.HTTP_202_ACCEPTED)
-        response['Authorization'] = f"Bearer {access_token}"
-
-        return response
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 class TestAuthentication(generics.GenericAPIView):
     permission_classes = [IsAuthenticated]
@@ -41,3 +38,22 @@ class TestAuthentication(generics.GenericAPIView):
             'msg': 'User Authenticated'
         }
         return Response(data, status=status.HTTP_200_OK)
+
+class UserUpdate(generics.RetrieveUpdateAPIView):
+
+    queryset = User.objects.all()
+    serializer_class = UpdateUserSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self):
+        return self.request.user
+
+
+    def update(self, request, *args, **kwargs):
+        user = self.get_object()
+        serializer = self.get_serializer(instance=user, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        serializer.is_valid(raise_exception=True)
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
