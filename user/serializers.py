@@ -170,7 +170,7 @@ class UserManagementSerializer(serializers.ModelSerializer):
 class CreateUserProfileSerializer(serializers.Serializer):
     bio = serializers.CharField(style={'base_template': 'textarea.html'}, max_length=700, required=True)
     phone_number = serializers.CharField(write_only=True, max_length=10, required=True)
-    profile_img = serializers.ImageField(required=False)
+    profile_image = serializers.ImageField(required=False)
     email = serializers.EmailField(required=True, write_only=True)
     class Meta:
         model = UserProfile

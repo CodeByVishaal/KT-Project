@@ -7,7 +7,8 @@ from rest_framework.pagination import PageNumberPagination
 from .models import User, UserProfile
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
-from decouple import config
+import os
+#from decouple import config
 
 # Create your views here.
 
@@ -115,8 +116,8 @@ class UserManagementView(generics.RetrieveUpdateDestroyAPIView):
         return Response({"message": "User deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
 
 class CustomPageNumberPagination(PageNumberPagination):
-    page_size = config('PAGE_SIZE')
-    page_query_param = config('PAGE_QUERY_PARAM')
+    page_size = os.environ.get('PAGE_SIZE')
+    page_query_param = os.environ.get('PAGE_QUERY_PARAM')
 
 class CreateUserProfileView(generics.ListCreateAPIView):
 

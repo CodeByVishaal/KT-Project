@@ -65,7 +65,7 @@ class UserProfile(models.Model):
     user = models.OneToOneField(User, blank=True, null=True, on_delete=models.CASCADE)
     bio = models.TextField(max_length=700, blank=True, null=True)
     phone_number = models.CharField(max_length=10, blank=True, null=True)
-    profile_img = models.ImageField(
+    profile_image = models.ImageField(
         upload_to="profile_pictures/",
         default="profile_pictures/user-default.png",
         blank=True

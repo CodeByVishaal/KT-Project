@@ -1,6 +1,6 @@
 from .base import *
-from decouple import config
+#from decouple import config
+import os
 
-DEBUG=config('DEBUG')
+DEBUG=os.environ.get('DEBUG')
 print("Running in Dev Environment")
-ALLOWED_HOSTS=config('ALLOWED_HOSTS').split(',')
