@@ -1,7 +1,8 @@
 from rest_framework import serializers
 # from rest_framework.exceptions import AuthenticationFailed
-from .models import User
+from .models import User, UserProfile
 from django.contrib.auth import authenticate
+from django.utils import timezone
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -89,6 +90,8 @@ class LoginSerializer(serializers.Serializer):
             if not user:
                 raise serializers.ValidationError({'AuthorizationError':'Invalid Credentials provided\nPlease check the provided credentials'})
 
+            user.last_login = timezone.now()
+            user.save(update_fields=['last_login'])
             user_token = user.token()
 
             return {
@@ -163,3 +166,46 @@ class UserManagementSerializer(serializers.ModelSerializer):
             setattr(instance, attr, data)
         instance.save()
         return instance
+
+class CreateUserProfileSerializer(serializers.Serializer):
+    bio = serializers.CharField(style={'base_template': 'textarea.html'}, max_length=700, required=True)
+    phone_number = serializers.CharField(write_only=True, max_length=10, required=True)
+    profile_img = serializers.ImageField(required=False)
+    email = serializers.EmailField(required=True, write_only=True)
+    class Meta:
+        model = UserProfile
+        fields = '__all__'
+        read_only_fields = ['user']
+
+    def validate_email(self, value):
+
+        user = User.objects.filter(email=value).first()
+
+        if not user:
+            raise serializers.ValidationError({'email':"User does not exist with this email"})
+
+        user_profile = UserProfile.objects.filter(user=user).exists()
+
+        if user_profile:
+            raise serializers.ValidationError({'email':"User Profile Exists."})
+        return value
+
+    def create(self, validated_data):
+        email = validated_data.pop('email')
+        user = User.objects.get(email=email)
+        validated_data['user'] = user
+
+        return UserProfile.objects.create(**validated_data)
+
+class UpdateUserProfileSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = UserProfile
+        fields = '__all__'
+        read_only_fields = ['user']
+
+    def validate_phone_number(self, number):
+        if number and not (number.isdigit() and len(number)==10):
+            raise serializers.ValidationError({'phone_number': 'Enter Valid Phone Number'})
+
+        return number

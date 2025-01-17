@@ -1,10 +1,13 @@
 from django.shortcuts import render
 from rest_framework import generics, status
-from .serializers import RegisterSerializer, LoginSerializer, UpdateUserSerializer, AdminRegisterSerializer, UserManagementSerializer
+from .serializers import RegisterSerializer, LoginSerializer, UpdateUserSerializer, AdminRegisterSerializer, UserManagementSerializer, CreateUserProfileSerializer, UpdateUserProfileSerializer
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from .models import User
-
+from rest_framework.pagination import PageNumberPagination
+from .models import User, UserProfile
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
+from decouple import config
 
 # Create your views here.
 
@@ -44,6 +47,21 @@ class UserLogin(generics.GenericAPIView):
 
 class TestAuthentication(generics.GenericAPIView):
     permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        manual_parameters=[
+            openapi.Parameter(
+                'auth_key',
+                openapi.IN_QUERY,
+                description="Authentication key",
+                type=openapi.TYPE_STRING,
+            )
+        ],
+        responses={
+            200: "User is Authorized",
+            400: "Bad Request, Invalid User",
+        }
+    )
 
     def get(self, request):
         data={
@@ -96,3 +114,29 @@ class UserManagementView(generics.RetrieveUpdateDestroyAPIView):
         user.delete()
         return Response({"message": "User deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
 
+class CustomPageNumberPagination(PageNumberPagination):
+    page_size = config('PAGE_SIZE')
+    page_query_param = config('PAGE_QUERY_PARAM')
+
+class CreateUserProfileView(generics.ListCreateAPIView):
+
+    serializer_class = CreateUserProfileSerializer
+    permission_classes = [IsAuthenticated]
+    pagination_class = CustomPageNumberPagination
+    queryset = UserProfile.objects.all().order_by('user')
+
+class UpdateUserProfileView(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsAuthenticated]
+    pagination_class = CustomPageNumberPagination
+    serializer_class = UpdateUserProfileSerializer
+    queryset = UserProfile.objects.all()
+
+    def get_object(self):
+
+        try:
+            user_profile = UserProfile.objects.get(user=self.request.user)
+
+        except UserProfile.DoesNotExist:
+            return Response("User Profile does not exist", status=status.HTTP_400_BAD_REQUEST)
+
+        return user_profile

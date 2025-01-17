@@ -1,3 +1,4 @@
+import uuid
 from django.db import models
 from django.contrib.auth.models import (AbstractBaseUser, BaseUserManager, PermissionsMixin)
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -32,11 +33,13 @@ class UserManager(BaseUserManager):
         return user
 
 class User(AbstractBaseUser, PermissionsMixin):
+    id = models.UUIDField(primary_key=True, editable=False, default=uuid.uuid4)
     username = models.CharField(max_length=255, unique=True)
     email = models.EmailField(max_length=50, unique=True)
     first_name = models.CharField(max_length=30)
     last_name = models.CharField(max_length=20)
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
@@ -56,3 +59,20 @@ class User(AbstractBaseUser, PermissionsMixin):
             'refresh':str(refresh),
             'access':str(refresh.access_token)
         }
+
+class UserProfile(models.Model):
+    id = models.UUIDField(primary_key=True, editable=False, default=uuid.uuid4())
+    user = models.OneToOneField(User, blank=True, null=True, on_delete=models.CASCADE)
+    bio = models.TextField(max_length=700, blank=True, null=True)
+    phone_number = models.CharField(max_length=10, blank=True, null=True)
+    profile_img = models.ImageField(
+        upload_to="profile_pictures/",
+        default="profile_pictures/user-default.png",
+        blank=True
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.user.username}'s Profile."
