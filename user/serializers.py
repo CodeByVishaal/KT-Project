@@ -86,6 +86,11 @@ class LoginSerializer(serializers.Serializer):
         password = data.get('password')
 
         user_data = User.objects.filter(email=email).first()
+
+        if not user_data.is_active:
+            raise serializers.ValidationError(
+                {'AuthorizationError':'User is Inactive, Please verify your email and your account will be activated by our internal team.'}
+                )
         if user_data:
             user = authenticate(
                 request=self.context.get("request"),

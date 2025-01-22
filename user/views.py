@@ -31,7 +31,43 @@ class UserRegistration(generics.CreateAPIView):
         #is_valid calls the seriallizer's validate method
         serilaizer.is_valid(raise_exception=True)
         serilaizer.save()
-        return Response(serilaizer.data, status=status.HTTP_201_CREATED)
+
+        email = request.data.get("email")
+
+        user = User.objects.get(email=email)
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+        token = default_token_generator.make_token(user)
+        verify_url = f'http://localhost:8000/api/auth/verifyemail/{uid}/{token}'
+        html_content = render_to_string(
+            "register_user_email.html", {"verify_url": verify_url}
+        )
+        from_mail = settings.EMAIL_HOST_USER
+        subject = 'Verify your email'
+        email_message = EmailMessage(subject, html_content,from_mail,[email])
+
+        email_message.content_subtype = "html"  # Indicate that the email content is HTML
+        email_message.send()
+
+        return Response(
+            {'message':'User Registered successfully. Verify your e-mail to access your account, verification mail has been sent to your mail ID', 'verify_url':f'{verify_url}'}, status=status.HTTP_201_CREATED)
+
+class VerifyEmailView(APIView):
+
+    def post(self, request, uidb64, token):
+        try:
+            uid = urlsafe_base64_decode(uidb64).decode()
+            user = User.objects.get(pk=uid)
+
+            if default_token_generator.check_token(user, token):
+                return Response(
+                    {'message':'You have Verified, please wait for the internal team to activate your account.'}, status=status.HTTP_200_OK
+                )
+
+        except (TypeError, ValueError, OverflowError, ObjectDoesNotExist):
+            return Response(
+                {"message": "Invalid user ID"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
 
 class AdminRegistration(generics.CreateAPIView):
     serializer_class = AdminRegisterSerializer
@@ -188,7 +224,7 @@ class UserForgotPasswordView(APIView):
             email_message.send()
 
             return Response(
-                {"message": "Password reset email sent"}, status=status.HTTP_200_OK
+                {"message": "Password reset email sent", 'reset_url':f'{reset_url}'}, status=status.HTTP_200_OK
             )
 
         except ObjectDoesNotExist:
