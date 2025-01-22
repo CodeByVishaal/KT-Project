@@ -31,6 +31,11 @@ class RegisterSerializer(serializers.ModelSerializer):
         if not username.isalnum():
             raise serializers.ValidationError({'username':"Username must only contain alphanumeric letters"})
 
+        username_exists = User.objects.filter(username=username).exists()
+
+        if username_exists:
+            raise serializers.ValidationError({'username':'Username already exists, try using different username.'})
+
         return data
 
     def create(self, validated_data):

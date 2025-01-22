@@ -1,5 +1,14 @@
 from django.shortcuts import render
+from django.core.mail import send_mail
+from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
+from django.utils.encoding import force_bytes
+from django.template.loader import render_to_string
+from django.core.mail import EmailMessage
+from django.core.exceptions import ObjectDoesNotExist
+from django.conf import settings
+from django.contrib.auth.tokens import default_token_generator
 from rest_framework import generics, status
+from rest_framework.views import APIView
 from .serializers import RegisterSerializer, LoginSerializer, UpdateUserSerializer, AdminRegisterSerializer, UserManagementSerializer, CreateUserProfileSerializer, UpdateUserProfileSerializer
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -141,3 +150,96 @@ class UpdateUserProfileView(generics.RetrieveUpdateDestroyAPIView):
             return Response("User Profile does not exist", status=status.HTTP_400_BAD_REQUEST)
 
         return user_profile
+
+class UserForgotPasswordView(APIView):
+    @swagger_auto_schema(
+            request_body=openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                required=["email"],
+                properties={
+                    "email": openapi.Schema(
+                        type=openapi.TYPE_STRING,
+                        description="The email send to reset password",
+                    )
+                },
+            ),
+            responses={
+                200: "email send successfully",
+                400: "Bad Request: email is required",
+                500: "Internal Server Error",
+            },
+        )
+    def post(self, request):
+        email = request.data.get("email")
+
+        try:
+            user = User.objects.get(email=email)
+            uid = urlsafe_base64_encode(force_bytes(user.pk))
+            token = default_token_generator.make_token(user)
+            reset_url = f'http://localhost:8000/api/auth/resetpassword/{uid}/{token}'
+            html_content = render_to_string(
+                "forgot_password_email.html", {"reset_url": reset_url}
+            )
+            from_mail = settings.EMAIL_HOST_USER
+            subject = 'Password Reset Request'
+            email_message = EmailMessage(subject, html_content,from_mail,[email])
+
+            email_message.content_subtype = "html"  # Indicate that the email content is HTML
+            email_message.send()
+
+            return Response(
+                {"message": "Password reset email sent"}, status=status.HTTP_200_OK
+            )
+
+        except ObjectDoesNotExist:
+            return Response(
+                {"message": "User not found"}, status=status.HTTP_404_NOT_FOUND
+            )
+
+class ResetPasswordView(APIView):
+    @swagger_auto_schema(
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=["password", "confirm_password"],
+            properties={
+                "password": openapi.Schema(
+                    type=openapi.TYPE_STRING, description="password"
+                ),
+                "confirm_password": openapi.Schema(
+                    type=openapi.TYPE_STRING,
+                    description="confirm_password",
+                ),
+            },
+        ),
+            responses={
+                200: "email send successfully",
+                400: "Bad Request: email is required",
+                500: "Internal Server Error",
+            },
+        )
+    def post(self, request, uidb64, token):
+        try:
+            uid = urlsafe_base64_decode(uidb64).decode()
+            user = User.objects.get(pk=uid)
+
+            if default_token_generator.check_token(user, token):
+                new_password = request.data.get("password")
+                confirm_password = request.data.get('confirm_password')
+
+                if new_password != confirm_password:
+                    return Response(
+                        {"message": "Passwords do not match"}, status=status.HTTP_400_BAD_REQUEST
+                    )
+
+                user.set_password(new_password)
+                user.save()
+                return Response(
+                    {"message": "Password reset successful"}, status=status.HTTP_200_OK
+                )
+            return Response(
+                {"message": "Invalid token"}, status=status.HTTP_401_UNAUTHORIZED
+            )
+        except (TypeError, ValueError, OverflowError, ObjectDoesNotExist):
+            return Response(
+                {"message": "Invalid user ID"}, status=status.HTTP_400_BAD_REQUEST
+            )
