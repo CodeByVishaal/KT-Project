@@ -53,7 +53,7 @@ class UserRegistration(generics.CreateAPIView):
 
 class VerifyEmailView(APIView):
 
-    def post(self, request, uidb64, token):
+    def post(self, uidb64, token):
         try:
             uid = urlsafe_base64_decode(uidb64).decode()
             user = User.objects.get(pk=uid)
