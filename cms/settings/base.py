@@ -20,6 +20,10 @@ from decouple import config
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+AZURE_API_KEY = config('AZURE_API_KEY')
+AZURE_MAIL_URL = config('AZURE_MAIL_URL')
+AZURE_SENDER_ADDRESS = config('AZURE_SENDER_ADDRESS')
+
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
@@ -153,8 +157,30 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"
+STORAGES = {
+    "staticfiles": {
+        "BACKEND": "storages.backends.azure_storage.AzureStorage",
+        "OPTIONS": {
+            "account_name": "bugbusterstoragekt",
+            "account_key": AZURE_API_KEY,
+            "azure_container": "static",
+            "expiration_secs": None,
+        },
+    },
+    "default": {
+        "BACKEND": "storages.backends.azure_storage.AzureStorage",
+        "OPTIONS": {
+            "account_name": "bugbusterstoragekt",
+            "account_key": AZURE_API_KEY,
+            "azure_container": "media",
+            "expiration_secs": None,
+        },
+    },
+}
+
+STATIC_URL = "https://bugbusterstoragekt.blob.core.windows.net/static/"
+MEDIA_URL = "https://bugbusterstoragekt.blob.core.windows.net/media/"
+# MEDIA_ROOT = BASE_DIR / "media"
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),

@@ -3,9 +3,11 @@ from django.core.mail import send_mail
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from django.utils.encoding import force_bytes
 from django.template.loader import render_to_string
+from cms.azure_mail_service import send_azure_mail
 from django.core.mail import EmailMessage
 from django.core.exceptions import ObjectDoesNotExist
 from django.conf import settings
+from cms.settings.base import AZURE_SENDER_ADDRESS
 from django.contrib.auth.tokens import default_token_generator
 from rest_framework import generics, status
 from rest_framework.views import APIView
@@ -13,6 +15,7 @@ from .serializers import RegisterSerializer, LoginSerializer, UpdateUserSerializ
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.pagination import PageNumberPagination
+
 from .models import User, UserProfile
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
@@ -41,12 +44,16 @@ class UserRegistration(generics.CreateAPIView):
         html_content = render_to_string(
             "register_user_email.html", {"verify_url": verify_url}
         )
-        from_mail = settings.EMAIL_HOST_USER
         subject = 'Verify your email'
-        email_message = EmailMessage(subject, html_content,from_mail,[email])
+        from_mail = AZURE_SENDER_ADDRESS
 
-        email_message.content_subtype = "html"  # Indicate that the email content is HTML
-        email_message.send()
+        send_azure_mail(subject, html_content, from_mail, email)
+
+        # from_mail = settings.EMAIL_HOST_USER
+        # email_message = EmailMessage(subject, html_content,from_mail,[email])
+
+        # email_message.content_subtype = "html"  # Indicate that the email content is HTML
+        # email_message.send()
 
         return Response(
             {'message':'User Registered successfully. Verify your e-mail to access your account, verification mail has been sent to your mail ID', 'verify_url':f'{verify_url}'}, status=status.HTTP_201_CREATED)
@@ -216,12 +223,15 @@ class UserForgotPasswordView(APIView):
             html_content = render_to_string(
                 "forgot_password_email.html", {"reset_url": reset_url}
             )
-            from_mail = settings.EMAIL_HOST_USER
+            from_mail = AZURE_SENDER_ADDRESS
             subject = 'Password Reset Request'
-            email_message = EmailMessage(subject, html_content,from_mail,[email])
 
-            email_message.content_subtype = "html"  # Indicate that the email content is HTML
-            email_message.send()
+            send_azure_mail(subject, html_content, from_mail, email)
+
+            # email_message = EmailMessage(subject, html_content,from_mail,[email])
+
+            # email_message.content_subtype = "html"  # Indicate that the email content is HTML
+            # email_message.send()
 
             return Response(
                 {"message": "Password reset email sent", 'reset_url':f'{reset_url}'}, status=status.HTTP_200_OK
