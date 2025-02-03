@@ -7,7 +7,7 @@ from cms.azure_mail_service import send_azure_mail
 from django.core.mail import EmailMessage
 from django.core.exceptions import ObjectDoesNotExist
 from django.conf import settings
-from cms.settings.base import AZURE_SENDER_ADDRESS
+from cms.settings.base import AZURE_SENDER_ADDRESS, EMAIL_HOST_USER
 from django.contrib.auth.tokens import default_token_generator
 from rest_framework import generics, status
 from rest_framework.views import APIView
@@ -60,15 +60,29 @@ class UserRegistration(generics.CreateAPIView):
 
 class VerifyEmailView(APIView):
 
-    def post(self, uidb64, token):
+    def post(self, request, uidb64, token):
         try:
             uid = urlsafe_base64_decode(uidb64).decode()
             user = User.objects.get(pk=uid)
 
             if default_token_generator.check_token(user, token):
-                return Response(
-                    {'message':'You have Verified, please wait for the internal team to activate your account.'}, status=status.HTTP_200_OK
-                )
+                try:
+                    user_email = user.email
+                    html_content = render_to_string(
+                "verified_user_notification.html", {"user_email": user_email}
+            )
+                    subject = 'Activate User'
+                    from_mail = AZURE_SENDER_ADDRESS
+                    to_email = EMAIL_HOST_USER
+
+                    send_azure_mail(subject, html_content, from_mail, to_email)
+                    return Response(
+                        {'message':'You have Verified, please wait for the internal team to activate your account.'}, status=status.HTTP_200_OK
+                    )
+                except Exception:
+                    return Response(
+                        {'message':'Failed to send Verification mail to the admin.'}
+                    )
 
         except (TypeError, ValueError, OverflowError, ObjectDoesNotExist):
             return Response(
@@ -202,7 +216,7 @@ class UserForgotPasswordView(APIView):
                 properties={
                     "email": openapi.Schema(
                         type=openapi.TYPE_STRING,
-                        description="The email send to reset password",
+                        description="The mail is sent to reset password",
                     )
                 },
             ),

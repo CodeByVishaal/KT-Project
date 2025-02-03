@@ -75,6 +75,7 @@ class AdminRegisterSerializer(serializers.ModelSerializer):
         return User.objects.create_superuser(**validated_data)
 
 class LoginSerializer(serializers.Serializer):
+    id = serializers.CharField(read_only=True)
     email = serializers.EmailField()
     password = serializers.CharField(min_length=5, style={'input_type':'password'}, write_only=True)
     username = serializers.CharField(read_only=True)
@@ -110,6 +111,7 @@ class LoginSerializer(serializers.Serializer):
             user_token = user.token()
 
             return {
+            'id': user.pk,
             'username': user.username,
             'email': user.email,
             'access_token': str(user_token.get('access')),
